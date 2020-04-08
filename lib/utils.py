@@ -13,7 +13,7 @@ import logging
 from queue import Queue
 
 from .mytypes import Bboxes, Scores, Landmarks, Detector
-from typing import Generator, Callable
+from typing import Generator, Callable, Tuple
 
 
 def is_valid_img(img_path: Path) -> bool:
@@ -33,6 +33,14 @@ def img_generator(dataset_root: Path) -> Generator[Path, None, None]:
             if not is_valid_img(file_path):
                 continue
             yield file_path
+
+
+def csv_generator(csv_path: Path) -> Generator[Tuple[int, int], None, None]:
+    with open(str(csv_path), 'r') as f:
+        f.readline()
+        for line in f:
+            left_el, right_el, score = line.strip().split(',')
+            yield int(left_el), int(right_el)
 
 
 def choose_center_face(scores: Scores, bboxes: Bboxes, width: int, height: int) -> int:
