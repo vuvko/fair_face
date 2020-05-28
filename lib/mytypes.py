@@ -4,6 +4,7 @@ from pathlib import Path
 import typing as t
 
 
+KwArgs = t.Dict[str, t.Any]
 Scores = np.ndarray
 Bboxes = np.ndarray
 Landmarks = np.ndarray
@@ -24,3 +25,13 @@ Backend = t.Any
 BackendEl = t.Union[mx.nd.NDArray, mx.sym.Symbol]
 
 Comparator = t.Callable[[Path, Path], float]
+
+ImgInfo = t.Dict[str, t.Any]
+# ImgInfo keys and structure:
+#  img_path: Path     --- path to the image
+#  img: Optional[Img] --- preloaded img
+#  subject_id: int    --- id of the person
+#  detected: bool     --- whether the face was detected on the image
+#  ...
+
+DataInfo = t.List[ImgInfo]
