@@ -1,4 +1,5 @@
 import mxnet as mx
+import argparse
 from pathlib import Path
 from insightface import model_zoo
 import logging
@@ -30,14 +31,26 @@ def get_detector_with_backup() -> Detector:
     return detect
 
 
+def config_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser('Extracting face images')
+    parser.add_argument('data_path', type=str,
+                        help='Path to the whole challenge data (train and val should be inside it)')
+    parser.add_argument('output_path', type=str,
+                        help='Path for the extracted images. Folder structure will be preserved.')
+    parser.add_argument('-l', '--log', type=str, default='prepare.log',
+                        help='Path for the log file')
+    return parser
+
+
 if __name__ == '__main__':
-    logging.basicConfig(filename='prepare.log',
+    args = config_parser().parse_args()
+    logging.basicConfig(filename=args.log_file,
                         filemode='a',
                         format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                         datefmt='%H:%M:%S',
                         level=logging.DEBUG)
-    detector = get_detector_with_backup()
-    prepare_images(Path('/run/media/andrey/Fast/FairFace/data'),
-                   Path('/run/media/andrey/Fast/FairFace/data_prep2'),
+    detector = get_detector_with_backup()  # can also be `get_retina_resnet50`
+    prepare_images(Path(args.data_path),
+                   Path(args.output_path),
                    detector,
                    choose_center_face)
