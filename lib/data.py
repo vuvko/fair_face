@@ -10,7 +10,7 @@ from typing import Optional, Sequence, Tuple
 def load_info(data_dir: Path, csv_path: Path) -> pd.DataFrame:
     info = pd.read_csv(str(csv_path), delimiter=',')
     img_paths = []
-    for template_id in info['template_id']:
+    for template_id in info['TEMPLATE_ID']:
         img_paths.append(data_dir / f'{template_id}.jpg')
     info['img_path'] = img_paths
     return info

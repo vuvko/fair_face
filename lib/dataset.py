@@ -26,7 +26,7 @@ class InfoDataset(Dataset):
     def __init__(self, data_info: pd.DataFrame):
         self.data_info = data_info
         self.paths = data_info['img_paths']
-        self.labels = data_info['subject_id']
+        self.labels = data_info['SUBJECT_ID']
 
     def __len__(self):
         return len(self.paths)
