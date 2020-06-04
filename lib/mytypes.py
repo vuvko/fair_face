@@ -35,3 +35,6 @@ ImgInfo = t.Dict[str, t.Any]
 #  ...
 
 DataInfo = t.List[ImgInfo]
+Label = int
+IdPair = t.Tuple[int, int]
+SubjectDict = t.Dict[int, t.Sequence[int]]
