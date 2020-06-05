@@ -28,7 +28,7 @@ def sample_triplets(subjects: SubjectDict, num_sample: int = 10 ** 3) -> Sequenc
         # sample an anchor with a positive candidate
         positive_pair = np.random.choice(subjects[cur_subject], size=2, replace=False)
         # sample a negative_candidate
-        other_subjects = subject_ids - {[cur_subject]}
+        other_subjects = subject_ids - {cur_subject}
         negative_subject = random.choice(list(other_subjects))
         negative_candidate = random.choice(subjects[negative_subject])
         triplets.append((positive_pair[0], positive_pair[1], negative_candidate))

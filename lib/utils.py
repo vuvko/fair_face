@@ -5,7 +5,9 @@ from insightface.utils.face_align import norm_crop
 from insightface import model_zoo
 from pathlib import Path
 import shutil
+from PIL import Image
 import os
+import operator
 from tqdm import tqdm
 import cv2
 import imghdr
@@ -14,6 +16,12 @@ from queue import Queue
 
 from .mytypes import Bboxes, Scores, Landmarks, Detector
 from typing import Generator, Callable, Tuple
+
+
+def ensure_path(cur: Path) -> Path:
+    if not cur.exists():
+        os.makedirs(str(cur))
+    return cur
 
 
 def is_valid_img(img_path: Path) -> bool:
@@ -58,8 +66,7 @@ def prepare_images(root_dir: Path,
     img_paths = list(img_generator(root_dir))
     for img_path, (scores, bboxes, landmarks) in zip(img_paths, tqdm(detector(img_paths), total=len(img_paths))):
         new_path = output_dir / img_path.relative_to(root_dir)
-        if not new_path.parent.exists():
-            os.makedirs(str(new_path.parent))
+        ensure_path(new_path.parent)
         img = cv2.imread(str(img_path))
         height, width = img.shape[:2]
         if len(landmarks) < 1:
@@ -68,3 +75,26 @@ def prepare_images(root_dir: Path,
         face_idx = choose_face(scores, bboxes, width, height)
         warped_img = norm_crop(img, landmarks[face_idx])
         cv2.imwrite(str(new_path), warped_img)
+
+
+class SizeFilter:
+
+    def __init__(self, min_size: int = 25):
+        self.min_size = min_size
+
+    def __call__(self, item):
+        size = Image.open(str(item[0])).size
+        return min(*size) > self.min_size
+
+
+class ComposeFilter:
+
+    def __init__(self, filters, logical_op=operator.and_):
+        self.reversed_filters = list(reversed(filters))
+        self.logical_op = logical_op
+
+    def __call__(self, item):
+        res = self.reversed_filters[0](item)
+        for cur_filter in self.reversed_filters[1:]:
+            res = self.logical_op(cur_filter(item), res)
+        return res
