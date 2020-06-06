@@ -22,7 +22,7 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='ultimate',
+        name='ultimate2',
         num_workers=6,
         gpus=(0,),
         batch_size=32,
