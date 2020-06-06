@@ -2,10 +2,11 @@
 
 ### Training
 
-* Finetuning ArcFace on challenge's data.
+* ~~Finetuning ArcFace on challenge's data.~~
 * External data preparation.
 * Abstracting from model and data (for external data training).
 * [Optuna](https://github.com/optuna/optuna) framework for hyperparameter tuning.
+* Add instructions for training on Google Colab or Kaggle.
 
 ### Validation
 
@@ -20,7 +21,7 @@
 
 ## Methods
 
-* Basic finetuned ArcFace for classification.
+* ~~Basic finetuned ArcFace for classification.~~
 * Normalised embedding network.
 * Different input sizes.
 * ArcLoss.
