@@ -57,7 +57,8 @@ class PairDataset(Dataset):
 
     def __init__(self, path_pairs: Iterable[Tuple[Path, Path]], labels: Iterable[int], augs=None):
         filter_fn = ExistsFilter()
-        self.data = list(filter(lambda item: filter_fn(item[0][0]) and filter_fn(item[0][1]), zip(path_pairs, labels)))
+        self.data = list(filter(lambda item: filter_fn((item[0][0], 0)) and filter_fn((item[0][1], 0)),
+                                zip(path_pairs, labels)))
         self.augs = augs
 
     def __len__(self) -> int:

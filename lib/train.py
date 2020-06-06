@@ -30,7 +30,7 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     train_val_ratio = 0.9
     subj_dict = aggregate_subjects(list(data_df.index), data_df['SUBJECT_ID'])
     train_subj, val_subj = split_data(subj_dict, train_val_ratio)
-    train_df = data_df.iloc[list(train_subj.values())]
+    train_df = data_df.iloc[sum(list(train_subj.values()), [])]
     val_pairs = sample_pairs(val_subj, config.val_num_sample)
     val_idx, val_labels = unzip(val_pairs)
     val_path_pairs = [(data_df['img_path'][left], data_df['img_path'][right]) for left, right in val_idx]
@@ -68,6 +68,7 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     lr_steps = config.steps
     snapshots_path = ensure_path(experiment_path / 'snapshots')
     sym = mx.sym.load(str(sym_path))
+    sym = sym.get_internals()['fc1_output']
     if config.normalize:
         norm_sym = mx.sym.sqrt(mx.sym.sum(sym ** 2, axis=1, keepdims=True) + 1e-6)
         sym = mx.sym.broadcast_div(sym, norm_sym, name='fc_normed') * 32
