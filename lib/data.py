@@ -52,7 +52,7 @@ def aggregate_subjects(template_ids: Sequence[int], subject_ids: Sequence[int]) 
     return subjects
 
 
-def split_data(subjects: SubjectDict, split_ratio: float) -> Tuple[SubjectDict]:
+def split_data(subjects: SubjectDict, split_ratio: float) -> Tuple[SubjectDict, SubjectDict]:
     all_subjects = list(subjects.keys())
     random.shuffle(all_subjects)
     left_subjects = all_subjects[:int(split_ratio * len(all_subjects))]

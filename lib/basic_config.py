@@ -33,6 +33,7 @@ class BasicConfig:
     batch_size: int = 1
     num_epochs: int = 10
     save_epoch: int = 1
+    val_num_sample: int = 2 * 10 ** 3
 
     lr_factor: float = 0.75
     warmup_epoch: int = 1

@@ -8,13 +8,16 @@ import pandas as pd
 import gluonfr
 from time import time
 from tqdm import tqdm
+from more_itertools import unzip
+from sklearn.metrics import roc_curve, roc_auc_score
 from .basic_config import BasicConfig
-from .dataset import InfoDataset
+from .dataset import InfoDataset, PairDataset
 from .sampler import UniformClassSampler
 from .utils import prepare_experiment, ensure_path
+from .data import aggregate_subjects, split_data, sample_pairs
 
 
-def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
+def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     res = prepare_experiment(config)
     if res is None:
         return None
@@ -24,15 +27,31 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
         ctx = [mx.gpu(cur_idx) for cur_idx in config.gpus]
     else:
         ctx = [mx.cpu()]
+    train_val_ratio = 0.9
+    subj_dict = aggregate_subjects(list(data_df.index), data_df['SUBJECT_ID'])
+    train_subj, val_subj = split_data(subj_dict, train_val_ratio)
+    train_df = data_df.iloc[list(train_subj.values())]
+    val_pairs = sample_pairs(val_subj, config.val_num_sample)
+    val_idx, val_labels = unzip(val_pairs)
+    val_path_pairs = [(data_df['img_path'][left], data_df['img_path'][right]) for left, right in val_idx]
     dataset = InfoDataset(train_df, filter_fn=config.filter_fn, augs=config.train_augmentations)
-    train_data = DataLoader(dataset,
-                            batch_size=config.batch_size,
-                            shuffle=not config.uniform_subjects,
-                            sampler=UniformClassSampler(dataset) if config.uniform_subjects else None,
-                            last_batch='discard',
-                            num_workers=config.num_workers,
-                            pin_memory=use_gpu
-                            )
+    train_data = DataLoader(
+        dataset,
+        batch_size=config.batch_size,
+        shuffle=not config.uniform_subjects,
+        sampler=UniformClassSampler(dataset) if config.uniform_subjects else None,
+        last_batch='discard',
+        num_workers=config.num_workers,
+        pin_memory=use_gpu
+    )
+    val_dataset = PairDataset(val_path_pairs, val_labels, augs=config.test_augmentations)
+    val_data = DataLoader(
+        val_dataset,
+        batch_size=config.batch_size,
+        shuffle=False,
+        num_workers=config.num_workers,
+        pin_memory=use_gpu
+    )
     model_name = 'arcface_r100_v1'
     net_name = config.name
     weight_path = str(Path.home() / f'.insightface/models/{model_name}/model-0000.params')
@@ -133,3 +152,9 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
         m_name, m_val = metric.get()
         losses_str += f'| {m_name}: {m_val}'
         logger.info(f'[Epoch {epoch:03d}] {losses_str} | time: {time() - tic:.1f}')
+        # validation
+        # logger.info(f' > evaluation {epoch}')
+        # for i, batch in tqdm(enumerate(val_data), total=len(val_data)):
+        #     left = mx.gluon.utils.split_and_load(batch[0], ctx_list=ctx, even_split=False)
+        #     right = mx.gluon.utils.split_and_load(batch[1], ctx_list=ctx, even_split=False)
+        #     gts = mx.gluon.utils.split_and_load(batch[2], ctx_list=ctx, even_split=False)
