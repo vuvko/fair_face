@@ -24,7 +24,7 @@ def compare(data_path: Path, experiment: str, num_sample: int) -> None:
     num_weights = len(list(model_path.iterdir())) - 1
     results = []
     for cur_epoch in range(num_weights):
-        comparator = CompareModel(str(model_path / experiment), cur_epoch + 1, ctx=mx.cpu(0))
+        comparator = CompareModel(str(model_path / experiment), cur_epoch + 1, ctx=mx.gpu(0))
         comparator.metric = cosine
         cosine_res = validate(comparator, data_path, val_csv, num_sample=num_sample)
         results.append(cosine_res)
