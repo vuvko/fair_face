@@ -4,7 +4,8 @@ import albumentations as alb
 import numpy as np
 import cv2
 from pathlib import Path
-from .mytypes import KwArgs
+from .filter import ComposeFilter, ExistsFilter
+from .mytypes import KwArgs, ItemFilter
 from typing import List, Tuple, Optional, Sequence, Callable, Any
 
 
@@ -32,8 +33,12 @@ class BasicConfig:
     num_epochs: int = 10
     save_epoch: int = 1
 
-    gamma: float = 0.1
+    lr_factor: float = 0.75
     warmup_epoch: int = 1
+    cooldown_epoch: int = 1
+    clip_gradient: float = 1.0
 
     pretrained_experiment: Optional[str] = None
     pretrain_args: KwArgs = defaultdict
+
+    filter_fn: ItemFilter = ExistsFilter()

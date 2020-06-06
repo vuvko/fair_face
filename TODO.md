@@ -9,12 +9,19 @@
 ### Validation
 
 * ~~Basic validation.~~
-* Stroring validation results in one format: table or smth like that for fast plotting and choosing.
+* Test-time augmentation.
+* Storing validation results in one format: table or smth like that for fast plotting and choosing.
+
+### Submission
+
+* Reproducibility
+> Organizers strongly encourage the use of docker to facilitate reproducibility
 
 ## Methods
 
 * Basic finetuned ArcFace for classification.
 * Normalised embedding network.
+* Different input sizes.
 * ArcLoss.
 * Uniform sampling.
 * External additional data (VGGFace2, GLint, MS-Celeb, etc.)

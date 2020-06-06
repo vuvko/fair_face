@@ -38,3 +38,6 @@ DataInfo = t.List[ImgInfo]
 Label = int
 IdPair = t.Tuple[int, int]
 SubjectDict = t.Dict[int, t.Sequence[int]]
+
+TrainItem = t.Tuple[Path, t.Any]
+ItemFilter = t.Callable[[TrainItem], bool]

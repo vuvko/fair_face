@@ -1,21 +1,18 @@
 import numpy as np
-import mxnet as mx
-from mxnet.gluon.data.vision import transforms
 from insightface.utils.face_align import norm_crop
-from insightface import model_zoo
 from pathlib import Path
 import shutil
-from PIL import Image
 import os
-import operator
 from tqdm import tqdm
 import cv2
 import imghdr
 import logging
 from queue import Queue
+import pickle
+from .basic_config import BasicConfig
 
 from .mytypes import Bboxes, Scores, Landmarks, Detector
-from typing import Generator, Callable, Tuple
+from typing import Generator, Callable, Tuple, Optional
 
 
 def ensure_path(cur: Path) -> Path:
@@ -77,24 +74,18 @@ def prepare_images(root_dir: Path,
         cv2.imwrite(str(new_path), warped_img)
 
 
-class SizeFilter:
-
-    def __init__(self, min_size: int = 25):
-        self.min_size = min_size
-
-    def __call__(self, item):
-        size = Image.open(str(item[0])).size
-        return min(*size) > self.min_size
-
-
-class ComposeFilter:
-
-    def __init__(self, filters, logical_op=operator.and_):
-        self.reversed_filters = list(reversed(filters))
-        self.logical_op = logical_op
-
-    def __call__(self, item):
-        res = self.reversed_filters[0](item)
-        for cur_filter in self.reversed_filters[1:]:
-            res = self.logical_op(cur_filter(item), res)
-        return res
+def prepare_experiment(config: BasicConfig) -> Optional[Tuple[Path, logging.Logger]]:
+    experiment_path = Path('experiments') / config.name
+    if experiment_path.exists():
+        logging.error('Experiment was already created, aborting.')
+        return None
+    os.makedirs(str(experiment_path))
+    with open(str(experiment_path / 'config.pkl'), 'wb') as f:
+        pickle.dump(config, f)
+    logger = logging.getLogger(f'{config.name} experiment')
+    fh = logging.FileHandler(str(experiment_path / 'experiment.log'))
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter('%(asctime)s [%(name)s]:%(levelname)s: %(message)s'))
+    logger.addHandler(fh)
+    logger.setLevel(logging.DEBUG)
+    return experiment_path, logger
