@@ -41,11 +41,19 @@ It is implemented in `plot_roc` function inside `validate.py` module.
 
 ## Training
 
+See `train.py` for the reference
+
+For training you need to provide a `BasicConfig` object with hyperparameters for the run and pandas.DataFrame with training info (including paths to training images) to the `train` function.
+It will create a folder for the experiment where you can find all information to recreate and score it (pickled config, model's weights, training log).
+
+For reproducibility you cannot overwrite already created experiment (that has the same name).
 
 ## Submitting
 
-For now only baseline solution is implemented.
 See `submit_arcface.py` for the reference.
+
+You need to provide your comparator (similar to validation step) for `submit` function with path to the prepared data and csv with validation pairs.
+For reproducibility you cannot overwrite already created submission (that has the same name).
 
 ## Literature reference
 

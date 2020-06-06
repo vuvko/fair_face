@@ -5,6 +5,7 @@
 * Finetuning ArcFace on challenge's data.
 * External data preparation.
 * Abstracting from model and data (for external data training).
+* [Optuna](https://github.com/optuna/optuna) framework for hyperparameter tuning.
 
 ### Validation
 

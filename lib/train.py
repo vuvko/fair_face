@@ -45,7 +45,7 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
     momentum = config.momentum
     wd = config.weight_decay
     clip_gradient = config.clip_gradient
-    lr_steps = config.steps  # [8, 14, 25, 35, 40, 50, 60]
+    lr_steps = config.steps
     snapshots_path = ensure_path(experiment_path / 'snapshots')
     sym = mx.sym.load(str(sym_path))
     sym = mx.sym.FullyConnected(sym, num_hidden=num_subjects, name='fc_classification', lr_mult=1)
