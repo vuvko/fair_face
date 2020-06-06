@@ -59,7 +59,6 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
     net.initialize(mx.init.Normal(), ctx=mx.cpu())
     net.collect_params().reset_ctx(ctx)
     net.hybridize()
-    net.export(str(snapshots_path / f'{net_name}'))
 
     all_losses = [
         ('softmax', gluon.loss.SoftmaxCrossEntropyLoss()),
