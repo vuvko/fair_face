@@ -52,7 +52,7 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
     if config.normalize:
         norm_sym = mx.sym.sqrt(mx.sym.sum(sym ** 2, axis=1, keepdims=True) + 1e-6)
         sym = mx.sym.broadcast_div(sym, norm_sym, name='fc_normed') * 32
-    sym = mx.sym.FullyConnected(sym, num_hidden=num_subjects, name='fc_classification', lr_mult=config.classifier_mult)
+    sym = mx.sym.FullyConnected(sym, num_hidden=num_subjects, name='fc_classification', lr_mult=1)
     net = gluon.SymbolBlock([sym], [mx.sym.var('data')])
     net.load_parameters(str(weight_path), ctx=mx.cpu(), cast_dtype=True,
                         allow_missing=True, ignore_extra=False)
@@ -76,6 +76,9 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
     cooldown_iter = 0
     end_lr = 1e-10
     param_dict = net.collect_params()
+    for key, val in param_dict._params.items():
+        if key.startswith('fc_classification'):
+            val.lr_mult *= config.classifier_mult
     trainer = mx.gluon.Trainer(param_dict, 'sgd', {
         'learning_rate': start_lr, 'momentum': momentum, 'wd': wd, 'clip_gradient': clip_gradient})
 
