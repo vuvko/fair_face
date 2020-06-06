@@ -14,6 +14,7 @@ class BasicConfig:
 
     seed: int = 100
     name: str = 'Untitled'
+    uniform_subjects: bool = False
 
     train_augmentations: alb.Compose = alb.Compose([
         alb.Resize(112, 112)
@@ -42,3 +43,6 @@ class BasicConfig:
     pretrain_args: KwArgs = defaultdict
 
     filter_fn: ItemFilter = ExistsFilter()
+    normalize: bool = False
+    weight_normalize: bool = False
+    classifier_mult: float = 1.0

@@ -10,6 +10,7 @@ from time import time
 from tqdm import tqdm
 from .basic_config import BasicConfig
 from .dataset import InfoDataset
+from .sampler import UniformClassSampler
 from .utils import prepare_experiment, ensure_path
 
 
@@ -26,8 +27,8 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
     dataset = InfoDataset(train_df, filter_fn=config.filter_fn, augs=config.train_augmentations)
     train_data = DataLoader(dataset,
                             batch_size=config.batch_size,
-                            shuffle=True,
-                            sampler=None,
+                            shuffle=not config.uniform_subjects,
+                            sampler=UniformClassSampler(dataset) if config.uniform_subjects else None,
                             last_batch='discard',
                             num_workers=config.num_workers,
                             pin_memory=use_gpu
@@ -48,7 +49,10 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
     lr_steps = config.steps
     snapshots_path = ensure_path(experiment_path / 'snapshots')
     sym = mx.sym.load(str(sym_path))
-    sym = mx.sym.FullyConnected(sym, num_hidden=num_subjects, name='fc_classification', lr_mult=1)
+    if config.normalize:
+        norm_sym = mx.sym.sqrt(mx.sym.sum(sym ** 2, axis=1, keepdims=True) + 1e-6)
+        sym = mx.sym.broadcast_div(sym, norm_sym, name='fc_normed') * 32
+    sym = mx.sym.FullyConnected(sym, num_hidden=num_subjects, name='fc_classification', lr_mult=config.classifier_mult)
     net = gluon.SymbolBlock([sym], [mx.sym.var('data')])
     net.load_parameters(str(weight_path), ctx=mx.cpu(), cast_dtype=True,
                         allow_missing=True, ignore_extra=False)
