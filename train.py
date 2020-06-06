@@ -22,7 +22,7 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='ultimate3',
+        name='ultimate4',
         num_workers=6,
         gpus=(0,),
         batch_size=32,
@@ -56,9 +56,9 @@ def run_train(data_path: Path):
         ]),
         normalize=True,
         uniform_subjects=True,
-        classifier_mult=100,
-        lr_factor=0.1,
-        initial_lr=1e-5
+        classifier_mult=10,
+        lr_factor=0.3,
+        initial_lr=1e-4
     )
     np.random.seed(cfg.seed)
     mx.random.seed(cfg.seed)
