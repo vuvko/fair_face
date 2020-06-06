@@ -59,6 +59,7 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
     net.initialize(mx.init.Normal(), ctx=mx.cpu())
     net.collect_params().reset_ctx(ctx)
     net.hybridize()
+    net.export(str(snapshots_path / f'{net_name}'))
 
     all_losses = [
         ('softmax', gluon.loss.SoftmaxCrossEntropyLoss()),
@@ -121,7 +122,8 @@ def train(config: BasicConfig, train_df: pd.DataFrame) -> None:
                 losses[idx] += sum([l.mean().asscalar() for l in cur_loss]) / len(cur_loss)
 
         if (epoch + 1) % config.save_epoch == 0:
-            net.save_parameters(str(snapshots_path / f'{net_name}-{(epoch + 1):04d}.params'))
+            # net.save_parameters(str(snapshots_path / f'{net_name}-{(epoch + 1):04d}.params'))
+            net.export(str(snapshots_path / f'{net_name}'), epoch + 1)
 
         losses = [l / num_batch for l in losses]
         losses_str = [f'{l_name}: {losses[idx]:.3f}' for idx, (l_name, _) in enumerate(all_losses)]

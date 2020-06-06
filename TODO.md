@@ -7,6 +7,9 @@
 * Abstracting from model and data (for external data training).
 * [Optuna](https://github.com/optuna/optuna) framework for hyperparameter tuning.
 * Add instructions for training on Google Colab or Kaggle.
+* Ensemble
+  * add linear model on top of predictions
+  * aggregation
 
 ### Validation
 
@@ -22,7 +25,7 @@
 ## Methods
 
 * ~~Basic finetuned ArcFace for classification.~~
-* Normalised embedding network.
+* ~~Normalised embedding network.~~
 * Different input sizes.
 * ArcLoss.
 * Uniform sampling.

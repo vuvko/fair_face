@@ -13,6 +13,7 @@ class CompareModel(object):
 
     def __init__(self,
                  model_name: str = 'arcface_r100_v1',
+                 epoch_num: int = 0,
                  ctx: mx.Context = mx.cpu()):
         if model_name == 'arcface_r100_v1':
             model = model_zoo.get_model(model_name)
@@ -23,7 +24,7 @@ class CompareModel(object):
             model.prepare(ctx_id=ctx_id)
             self.model = model.model
         else:
-            sym, arg_params, aux_params = mx.model.load_checkpoint(model_name, 0)
+            sym, arg_params, aux_params = mx.model.load_checkpoint(model_name, epoch_num)
             sym = sym.get_internals()['fc1_output']
             model = mx.mod.Module(symbol=sym, context=ctx, label_names=None)
             data_shape = (1, 3, 112, 112)

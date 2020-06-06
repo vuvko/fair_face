@@ -36,6 +36,8 @@ def plot_roc(results: Iterable[Tuple[np.ndarray, np.ndarray]],
         plt.plot(fpr, 1 - tpr, label=f'{cur_name} AUC: {roc_auc_score(cur_labels, cur_preds):.5f}')
     plt.xscale('log')
     plt.yscale('log')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('False Negative Rate')
     plt.grid()
     plt.legend()
     plt.savefig(save_name)
