@@ -6,8 +6,6 @@ import albumentations as alb
 import numpy as np
 import mxnet as mx
 import lib
-import cv2
-import albumentations as alb
 from lib.data import load_info
 from lib.basic_config import BasicConfig
 
@@ -22,12 +20,14 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='ultimate4',
+        name='ultimate6',
         num_workers=6,
         gpus=(0,),
         batch_size=32,
-        num_epochs=10,
-        steps=(3, 5, np.inf),
+        num_epochs=20,
+        steps=(5, 10, 15, np.inf),
+        warmup_epoch=2,
+        cooldown_epoch=3,
         train_augmentations=alb.Compose([
             alb.OneOf([
                 alb.MotionBlur(blur_limit=5, p=0.2),
@@ -56,8 +56,8 @@ def run_train(data_path: Path):
         ]),
         normalize=True,
         uniform_subjects=True,
-        classifier_mult=10,
-        lr_factor=0.3,
+        classifier_mult=100,
+        lr_factor=0.5,
         initial_lr=1e-4
     )
     np.random.seed(cfg.seed)
