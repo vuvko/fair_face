@@ -20,7 +20,7 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='ultimate7',
+        name='arcface_ft_norm2',
         num_workers=6,
         gpus=(0,),
         batch_size=32,
@@ -55,10 +55,10 @@ def run_train(data_path: Path):
             alb.ChannelShuffle(p=0.5)
         ]),
         normalize=True,
-        weight_normalize=True,
-        uniform_subjects=True,
+        weight_normalize=False,
+        uniform_subjects=False,
         classifier_mult=100,
-        lr_factor=0.1,
+        lr_factor=0.5,
         initial_lr=1e-4
     )
     np.random.seed(cfg.seed)
