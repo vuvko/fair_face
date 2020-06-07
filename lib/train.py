@@ -92,7 +92,7 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     all_losses = [
         ('softmax', gluon.loss.SoftmaxCrossEntropyLoss()),
         # ('arc', gluonfr.loss.ArcLoss(num_families, m=0.7, s=32, easy_margin=False)),
-        ('center', gluonfr.loss.CenterLoss(num_subjects, 512, 1e-1))
+        # ('center', gluonfr.loss.CenterLoss(num_subjects, 512, 1e-1))
     ]
     # all_losses[1][1].initialize(mx.init.Normal(), ctx=mx.cpu())
     # all_losses[1][1].collect_params().reset_ctx(ctx)
