@@ -72,7 +72,16 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     if config.normalize:
         norm_sym = mx.sym.sqrt(mx.sym.sum(sym ** 2, axis=1, keepdims=True) + 1e-6)
         sym = mx.sym.broadcast_div(sym, norm_sym, name='fc_normed') * 32
-    sym = mx.sym.FullyConnected(sym, num_hidden=num_subjects, name='fc_classification', lr_mult=1)
+    fc_weights = mx.sym.Variable('fc_weight',
+                                 shape=(num_subjects, 512),
+                                 init=mx.initializer.Xavier(rnd_type='gaussian',
+                                                            factor_type="in",
+                                                            magnitude=2),
+                                 lr_mult=1)
+    if config.weight_normalize:
+        fc_weights = mx.sym.L2Normalization(data=fc_weights,
+                                            name='norm_fc_weight')
+    sym = mx.sym.FullyConnected(sym, weight=fc_weights, num_hidden=num_subjects, name='fc_classification', no_bias=False)
     net = gluon.SymbolBlock([sym], [mx.sym.var('data')])
     net.load_parameters(str(weight_path), ctx=mx.cpu(), cast_dtype=True,
                         allow_missing=True, ignore_extra=False)
@@ -83,7 +92,7 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     all_losses = [
         ('softmax', gluon.loss.SoftmaxCrossEntropyLoss()),
         # ('arc', gluonfr.loss.ArcLoss(num_families, m=0.7, s=32, easy_margin=False)),
-        # ('center', gluonfr.loss.CenterLoss(num_families, 512, 1e-1))
+        ('center', gluonfr.loss.CenterLoss(num_subjects, 512, 1e-1))
     ]
 
     if warmup > 0:
