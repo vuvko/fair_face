@@ -20,14 +20,14 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='ultimate6',
+        name='ultimate7',
         num_workers=6,
         gpus=(0,),
         batch_size=32,
-        num_epochs=20,
-        steps=(5, 10, 15, np.inf),
-        warmup_epoch=2,
-        cooldown_epoch=3,
+        num_epochs=10,
+        steps=(3, 5, np.inf),
+        warmup_epoch=1,
+        cooldown_epoch=2,
         train_augmentations=alb.Compose([
             alb.OneOf([
                 alb.MotionBlur(blur_limit=5, p=0.2),
@@ -55,9 +55,10 @@ def run_train(data_path: Path):
             alb.ChannelShuffle(p=0.5)
         ]),
         normalize=True,
+        weight_normalize=True,
         uniform_subjects=True,
         classifier_mult=100,
-        lr_factor=0.5,
+        lr_factor=0.1,
         initial_lr=1e-4
     )
     np.random.seed(cfg.seed)
