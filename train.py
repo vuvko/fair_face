@@ -20,12 +20,12 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='arcface_ft_norm2',
+        name='full_ft',
         num_workers=6,
         gpus=(0,),
         batch_size=32,
         num_epochs=10,
-        steps=(3, 5, np.inf),
+        steps=(3, 6, np.inf),
         warmup_epoch=1,
         cooldown_epoch=2,
         train_augmentations=alb.Compose([
@@ -55,8 +55,8 @@ def run_train(data_path: Path):
             alb.ChannelShuffle(p=0.5)
         ]),
         normalize=True,
-        weight_normalize=False,
-        uniform_subjects=False,
+        weight_normalize=True,
+        uniform_subjects=True,
         classifier_mult=100,
         lr_factor=0.5,
         initial_lr=1e-4
