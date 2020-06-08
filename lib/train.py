@@ -27,13 +27,14 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
         ctx = [mx.gpu(cur_idx) for cur_idx in config.gpus]
     else:
         ctx = [mx.cpu()]
-    train_val_ratio = 0.9
-    subj_dict = aggregate_subjects(list(data_df.index), data_df['SUBJECT_ID'])
-    train_subj, val_subj = split_data(subj_dict, train_val_ratio)
-    train_df = data_df.iloc[sum(list(train_subj.values()), [])]
-    val_pairs = sample_pairs(val_subj, config.val_num_sample)
-    val_idx, val_labels = unzip(val_pairs)
-    val_path_pairs = [(data_df['img_path'][left], data_df['img_path'][right]) for left, right in val_idx]
+    # train_val_ratio = 0.9
+    # subj_dict = aggregate_subjects(list(data_df.index), data_df['SUBJECT_ID'])
+    # train_subj, val_subj = split_data(subj_dict, train_val_ratio)
+    # train_df = data_df.iloc[sum(list(train_subj.values()), [])]
+    # val_pairs = sample_pairs(val_subj, config.val_num_sample)
+    # val_idx, val_labels = unzip(val_pairs)
+    # val_path_pairs = [(data_df['img_path'][left], data_df['img_path'][right]) for left, right in val_idx]
+    train_df = data_df
     dataset = InfoDataset(train_df, filter_fn=config.filter_fn, augs=config.train_augmentations)
     train_data = DataLoader(
         dataset,
@@ -44,14 +45,14 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
         num_workers=config.num_workers,
         pin_memory=use_gpu
     )
-    val_dataset = PairDataset(val_path_pairs, val_labels, augs=config.test_augmentations)
-    val_data = DataLoader(
-        val_dataset,
-        batch_size=config.batch_size,
-        shuffle=False,
-        num_workers=config.num_workers,
-        pin_memory=use_gpu
-    )
+    # val_dataset = PairDataset(val_path_pairs, val_labels, augs=config.test_augmentations)
+    # val_data = DataLoader(
+    #     val_dataset,
+    #     batch_size=config.batch_size,
+    #     shuffle=False,
+    #     num_workers=config.num_workers,
+    #     pin_memory=use_gpu
+    # )
     model_name = 'arcface_r100_v1'
     net_name = config.name
     weight_path = str(Path.home() / f'.insightface/models/{model_name}/model-0000.params')
