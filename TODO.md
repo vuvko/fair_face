@@ -28,7 +28,7 @@
 * ~~Normalised embedding network.~~
 * Different input sizes.
 * ArcLoss.
-* Uniform sampling.
+* ~~Uniform sampling.~~
 * External additional data (VGGFace2, GLint, MS-Celeb, etc.)
 * Clusterisation based on KMeans and embeddings.
 * Clusterisation based on cutting graph (use only closest 3 face embeddings).
