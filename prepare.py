@@ -44,7 +44,7 @@ def config_parser() -> argparse.ArgumentParser:
 
 if __name__ == '__main__':
     args = config_parser().parse_args()
-    logging.basicConfig(filename=args.log_file,
+    logging.basicConfig(filename=args.log,
                         filemode='a',
                         format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                         datefmt='%H:%M:%S',

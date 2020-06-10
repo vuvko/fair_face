@@ -30,7 +30,6 @@ def plot_roc(results: Iterable[Tuple[np.ndarray, np.ndarray]],
              ) -> None:
     if experiment_names is None:
         experiment_names = count()
-    plt.figure()
     for cur_name, (cur_labels, cur_preds) in zip(experiment_names, results):
         fpr, tpr, _ = roc_curve(cur_labels, cur_preds)
         plt.plot(fpr, 1 - tpr, label=f'{cur_name} AUC: {roc_auc_score(cur_labels, cur_preds):.5f}')
