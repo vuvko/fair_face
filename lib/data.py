@@ -2,9 +2,10 @@ import numpy as np
 from pathlib import Path
 from skimage import io
 import pandas as pd
+from pathos.multiprocessing import Pool
 import random
 from .mytypes import DataInfo, Img, SubjectDict, IdPair, Label
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple, Iterable
 
 
 def load_info(data_dir: Path, csv_path: Path) -> pd.DataFrame:
@@ -20,18 +21,24 @@ def load_img(img_path: Path) -> Optional[Img]:
     return io.imread(str(img_path))
 
 
-def sample_triplets(subjects: SubjectDict, num_sample: int = 10 ** 3) -> Sequence[Tuple[int, int, int]]:
+def sample_triplet(subjects: SubjectDict, subject_ids, cur_subject) -> Tuple[int, int, int]:
+    # sample an anchor with a positive candidate
+    positive_pair = np.random.choice(subjects[cur_subject], size=2, replace=False)
+    # sample a negative_candidate
+    other_subjects = subject_ids - {cur_subject}
+    negative_subject = random.choice(list(other_subjects))
+    negative_candidate = random.choice(subjects[negative_subject])
+    return positive_pair[0], positive_pair[1], negative_candidate
+
+
+def sample_triplets(subjects: SubjectDict, num_sample: int = 10 ** 3) -> Iterable[Tuple[int, int, int]]:
     subject_ids = set(subjects.keys())
     sample_subjects = np.random.choice(list(subject_ids), size=num_sample)
-    triplets = []
-    for cur_subject in sample_subjects:
-        # sample an anchor with a positive candidate
-        positive_pair = np.random.choice(subjects[cur_subject], size=2, replace=False)
-        # sample a negative_candidate
-        other_subjects = subject_ids - {cur_subject}
-        negative_subject = random.choice(list(other_subjects))
-        negative_candidate = random.choice(subjects[negative_subject])
-        triplets.append((positive_pair[0], positive_pair[1], negative_candidate))
+    # triplets = []
+    # for cur_subject in sample_subjects:
+    #     triplets.append(sample_triplet(subjects, subject_ids, cur_subject))
+    with Pool(4) as p:
+        triplets = p.imap_unordered(lambda cur_subject: sample_triplet(subjects, subject_ids, cur_subject), sample_subjects)
     return triplets
 
 
