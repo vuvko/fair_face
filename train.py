@@ -20,7 +20,7 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='full_ft',
+        name='full_ft2',
         num_workers=6,
         gpus=(0,),
         batch_size=32,
@@ -29,6 +29,7 @@ def run_train(data_path: Path):
         warmup_epoch=1,
         cooldown_epoch=2,
         train_augmentations=alb.Compose([
+            alb.Resize(128, 128),
             alb.OneOf([
                 alb.MotionBlur(blur_limit=5, p=0.2),
                 alb.MedianBlur(blur_limit=3, p=0.1),
@@ -38,7 +39,6 @@ def run_train(data_path: Path):
                 alb.ImageCompression(70, compression_type=alb.ImageCompression.ImageCompressionType.JPEG),
                 alb.ImageCompression(70, compression_type=alb.ImageCompression.ImageCompressionType.WEBP)
             ], p=0.2),
-            alb.Resize(128, 128),
             alb.OneOf([
                 alb.CLAHE(clip_limit=2),
                 alb.IAASharpen(),
