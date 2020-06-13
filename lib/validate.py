@@ -1,13 +1,18 @@
 import numpy as np
 import pandas as pd
+import mxnet as mx
+from mxnet.gluon.data import DataLoader
 from pathlib import Path
 from more_itertools import unzip
 from itertools import count
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 from .data import aggregate_subjects, sample_pairs
 from .submit import compare_all
 from .mytypes import Comparator
+from .basic_config import BasicConfig
+from .dataset import InfoDataset
 from typing import Iterable, Tuple, Optional
 
 
@@ -41,3 +46,37 @@ def plot_roc(results: Iterable[Tuple[np.ndarray, np.ndarray]],
     plt.legend()
     plt.savefig(save_name)
     plt.show()
+
+
+def run_model(model_prefix: str, model_epoch: int, config: BasicConfig, data_df: pd.DataFrame, save_path: Path):
+    use_gpu = len(config.gpus) > 0
+    if use_gpu:
+        ctx = [mx.gpu(cur_idx) for cur_idx in config.gpus]
+    else:
+        ctx = [mx.cpu()]
+    sym, args, auxs = mx.model.load_checkpoint(model_prefix, model_epoch)
+    model = mx.mod.Module(symbol=sym, context=ctx, label_names=None)
+    data_shape = (1, 3, 112, 112)
+    model.bind(data_shapes=[('data', data_shape)], for_training=False)
+    model.set_params(args, auxs)
+    dataset = InfoDataset(data_df, filter_fn=config.filter_fn, augs=config.test_augmentations)
+    data = DataLoader(
+        dataset,
+        batch_size=config.batch_size,
+        shuffle=False,
+        sampler=None,
+        num_workers=config.num_workers,
+        pin_memory=use_gpu
+    )
+    predictions = []
+    all_paths, labels = unzip(dataset.data)
+    for i, batch in tqdm(enumerate(data), total=len(data)):
+        data = mx.gluon.utils.split_and_load(batch[0], ctx_list=ctx, even_split=False)
+        batch = mx.io.DataBatch(data)
+        model.forward(batch, is_train=False)
+        predictions.append(model.get_outputs()[0].asnumpy())
+    predictions = np.concatenate(predictions, axis=0)
+    labels = np.array(list(labels))
+    all_paths = list(all_paths)
+    # np.savez(str(save_path), paths=all_paths, labels=labels, preds=predictions)
+    return all_paths, labels, predictions
