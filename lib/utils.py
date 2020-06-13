@@ -58,7 +58,9 @@ def choose_center_face(scores: Scores, bboxes: Bboxes, width: int, height: int) 
 def prepare_images(root_dir: Path,
                    output_dir: Path,
                    detector: Detector,
-                   choose_face: Callable[[Scores, Bboxes, int, int], int]) -> None:
+                   choose_face: Callable[[Scores, Bboxes, int, int], int],
+                   small_face: int = -1
+                   ) -> None:
     logging.info(f'Starting preparation: input dir {root_dir} output dir {output_dir}')
     img_paths = list(img_generator(root_dir))
     for img_path, (scores, bboxes, landmarks) in zip(img_paths, tqdm(detector(img_paths), total=len(img_paths))):
@@ -70,6 +72,11 @@ def prepare_images(root_dir: Path,
             logging.warning(f'smth wrong with {img_path}')
             continue
         face_idx = choose_face(scores, bboxes, width, height)
+        if small_face > 0:
+            bbox = bboxes[face_idx]
+            if bbox[2] - bbox[0] < small_face or bbox[3] - bbox[1] < small_face:
+                logging.warning(f'small face in image {img_path}')
+                continue
         warped_img = norm_crop(img, landmarks[face_idx])
         cv2.imwrite(str(new_path), warped_img)
 

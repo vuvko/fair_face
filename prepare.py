@@ -39,6 +39,8 @@ def config_parser() -> argparse.ArgumentParser:
                         help='Path for the extracted images. Folder structure will be preserved.')
     parser.add_argument('-l', '--log', type=str, default='prepare.log',
                         help='Path for the log file')
+    parser.add_argument('-s', '--size', type=int, default=-1,
+                        help='Minimum size for the face. Default is no minimum.')
     return parser
 
 
@@ -53,4 +55,5 @@ if __name__ == '__main__':
     prepare_images(Path(args.data_path),
                    Path(args.output_path),
                    detector,
-                   choose_center_face)
+                   choose_center_face,
+                   args.size)
