@@ -78,5 +78,5 @@ def run_model(model_prefix: str, model_epoch: int, config: BasicConfig, data_df:
     predictions = np.concatenate(predictions, axis=0)
     labels = np.array(list(labels))
     all_paths = list(all_paths)
-    # np.savez(str(save_path), paths=all_paths, labels=labels, preds=predictions)
+    np.savez(str(save_path), paths=all_paths, labels=labels, preds=predictions)
     return all_paths, labels, predictions
