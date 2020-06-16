@@ -30,7 +30,7 @@ def compare(data_path: Path, experiment: str, num_sample: int, use_flip: bool = 
         comparator.metric = cosine
         cosine_res = validate(comparator, data_path, val_csv, num_sample=num_sample)
         results.append(cosine_res)
-    plot_roc(results, save_name=f'{experiment}_roc.png')
+    plot_roc(results, save_name=f'{experiment}_{"flip" if use_flip else "no_flip"}_roc.png')
 
 
 if __name__ == '__main__':
