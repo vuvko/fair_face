@@ -22,7 +22,7 @@ def load_img(img_path: Path) -> Optional[Img]:
 
 def sample_triplet(subjects: SubjectDict, subject_ids, cur_subject) -> Tuple[int, int, int]:
     # sample an anchor with a positive candidate
-    positive_pair = np.random.choice(subjects[cur_subject], size=2, replace=False)
+    positive_pair = np.random.choice(subjects[cur_subject], size=2, replace=True)
     # sample a negative_candidate
     other_subjects = subject_ids - {cur_subject}
     negative_subject = random.choice(list(other_subjects))
