@@ -36,7 +36,7 @@ def sample_triplets(subjects: SubjectDict, num_sample: int = 10 ** 3) -> Iterabl
     # triplets = []
     # for cur_subject in sample_subjects:
     #     triplets.append(sample_triplet(subjects, subject_ids, cur_subject))
-    triplets = imap(lambda cur_subject: sample_triplet(subjects, subject_ids, cur_subject), sample_subjects)
+    triplets = map(lambda cur_subject: sample_triplet(subjects, subject_ids, cur_subject), sample_subjects)
     return triplets
 
 
