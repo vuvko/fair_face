@@ -2,7 +2,6 @@ import numpy as np
 from pathlib import Path
 from skimage import io
 import pandas as pd
-from pathos.multiprocessing import Pool
 import random
 from .mytypes import DataInfo, Img, SubjectDict, IdPair, Label
 from typing import Optional, Sequence, Tuple, Iterable
@@ -37,8 +36,7 @@ def sample_triplets(subjects: SubjectDict, num_sample: int = 10 ** 3) -> Iterabl
     # triplets = []
     # for cur_subject in sample_subjects:
     #     triplets.append(sample_triplet(subjects, subject_ids, cur_subject))
-    with Pool(4) as p:
-        triplets = p.imap_unordered(lambda cur_subject: sample_triplet(subjects, subject_ids, cur_subject), sample_subjects)
+    triplets = imap(lambda cur_subject: sample_triplet(subjects, subject_ids, cur_subject), sample_subjects)
     return triplets
 
 
