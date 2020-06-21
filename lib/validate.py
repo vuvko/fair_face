@@ -10,21 +10,27 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import roc_curve, roc_auc_score
 from .data import aggregate_subjects, sample_pairs
 from .submit import compare_all
-from .mytypes import Comparator
+from .mytypes import Comparator, PairPath
 from .basic_config import BasicConfig
 from .dataset import InfoDataset
-from typing import Iterable, Tuple, Optional
+from typing import Iterable, Tuple, Optional, Sequence
 
 
 def validate(comparator: Comparator,
              data_dir: Path,
              validation_csv: Path,
-             num_sample: int = 10 ** 3
+             num_sample: int = 10 ** 3,
+             pairs: Optional[Iterable[Tuple[int, int]]] = None,
+             labels: Optional[Sequence[int]] = None
              ) -> Tuple[np.ndarray, np.ndarray]:
-    df = pd.read_csv(validation_csv)
-    subject_dict = aggregate_subjects(df['TEMPLATE_ID'], df['SUBJECT_ID'])
-    sampled_pairs, sampled_labels = unzip(sample_pairs(subject_dict, num_sample))
-    sampled_labels = np.array(list(sampled_labels))
+    if num_sample > 0:
+        df = pd.read_csv(validation_csv)
+        subject_dict = aggregate_subjects(df['TEMPLATE_ID'], df['SUBJECT_ID'])
+        sampled_pairs, sampled_labels = unzip(sample_pairs(subject_dict, num_sample))
+        sampled_labels = np.array(list(sampled_labels))
+    else:
+        sampled_pairs = pairs
+        sampled_labels = np.array(labels)
     predictions = np.array(list(unzip(compare_all(data_dir, sampled_pairs, comparator))[2]))
     return sampled_labels, predictions
 
@@ -45,7 +51,7 @@ def plot_roc(results: Iterable[Tuple[np.ndarray, np.ndarray]],
     plt.grid()
     plt.legend()
     plt.savefig(save_name)
-    plt.show()
+    # plt.show()
 
 
 def run_model(model_prefix: str, model_epoch: int, config: BasicConfig, data_df: pd.DataFrame, save_path: Path):
