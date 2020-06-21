@@ -2,7 +2,6 @@ import numpy as np
 from pathlib import Path
 from skimage import io
 import pandas as pd
-from pathos.multiprocessing import Pool
 import random
 from .mytypes import DataInfo, Img, SubjectDict, IdPair, Label
 from typing import Optional, Sequence, Tuple, Iterable
@@ -23,7 +22,7 @@ def load_img(img_path: Path) -> Optional[Img]:
 
 def sample_triplet(subjects: SubjectDict, subject_ids, cur_subject) -> Tuple[int, int, int]:
     # sample an anchor with a positive candidate
-    positive_pair = np.random.choice(subjects[cur_subject], size=2, replace=False)
+    positive_pair = np.random.choice(subjects[cur_subject], size=2, replace=True)
     # sample a negative_candidate
     other_subjects = subject_ids - {cur_subject}
     negative_subject = random.choice(list(other_subjects))
@@ -37,8 +36,7 @@ def sample_triplets(subjects: SubjectDict, num_sample: int = 10 ** 3) -> Iterabl
     # triplets = []
     # for cur_subject in sample_subjects:
     #     triplets.append(sample_triplet(subjects, subject_ids, cur_subject))
-    with Pool(4) as p:
-        triplets = p.map(lambda cur_subject: sample_triplet(subjects, subject_ids, cur_subject), sample_subjects)
+    triplets = map(lambda cur_subject: sample_triplet(subjects, subject_ids, cur_subject), sample_subjects)
     return triplets
 
 
