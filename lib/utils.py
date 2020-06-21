@@ -50,7 +50,7 @@ def csv_generator(csv_path: Path) -> Generator[Tuple[int, int], None, None]:
 
 def choose_center_face(scores: Scores, bboxes: Bboxes, width: int, height: int) -> int:
     face_centers = 0.5 * (bboxes[:, :2] + bboxes[:, 2:])
-    img_center = np.array([height / 2, width / 2], dtype=np.float32).reshape((1, 2))
+    img_center = np.array([width / 2, height / 2], dtype=np.float32).reshape((1, 2))
     dist = np.linalg.norm(face_centers - img_center, axis=1)
     return int(np.argmin(dist))
 
