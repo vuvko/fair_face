@@ -2,6 +2,7 @@ import numpy as np
 import mxnet as mx
 from pathlib import Path
 from insightface import model_zoo
+from sklearn import preprocessing
 from . import metrics
 from .dataset import ImgDataset
 
@@ -65,3 +66,62 @@ class CompareModel(object):
         emb1 = self.get_embedding(path1)
         emb2 = self.get_embedding(path2)
         return self.metric(emb1, emb2)
+
+
+def cluster_sklearn(embs, algorithm, dist_matrix=None):
+    if dist_matrix is None:
+        algorithm.fit(embs)
+    else:
+        algorithm.fit(dist_matrix)
+    return algorithm.labels_
+
+
+def get_medians(embs, labels, norm_median: bool = False):
+    per_label = {}
+    for cur_emb, cur_label in zip(embs, labels):
+        if cur_label not in per_label:
+            per_label[cur_label] = []
+        per_label[cur_label].append(cur_emb)
+    medias = {}
+    for cur_label, cur_embs in per_label.items():
+        if cur_label == -1:
+            continue
+        median = np.mean(cur_embs, axis=0)
+        if norm_median:
+            median = median / np.sqrt(np.sum(median ** 2, axis=-1, keepdims=True))
+        medias[cur_label] = median
+    ret_medians = np.empty(embs.shape, dtype=np.float32)
+    for cur_idx, cur_label in enumerate(labels):
+        if cur_label == -1:
+            ret_medians[cur_idx] = embs[cur_idx]
+        else:
+            ret_medians[cur_idx] = medias[cur_label]
+    return ret_medians
+
+
+def config_median_comparator(comparator, label_method, all_paths: List[Path], metric, norm_median: bool = False,
+                             median_alpha: float = 1.0):
+    #     print('Preparing embeddings')
+    res = [comparator(cur_p, cur_p) for cur_p in (all_paths)]
+    embeddings_dict = comparator.embeddings
+    embeddings = np.array([embeddings_dict[cur_p] for cur_p in all_paths])
+    path_idx = {path: idx for idx, path in enumerate(all_paths)}
+    #     print('Getting medians')
+    labels = label_method(embeddings)
+    medians = get_medians(embeddings, labels, norm_median)
+
+    embeddings = preprocessing.normalize(embeddings)
+    medians = preprocessing.normalize(medians)
+
+    #     print('Done configurating')
+
+    def compare(left_path: Path, right_path: Path):
+        left_embedding = embeddings[path_idx[left_path]]
+        left_median = medians[path_idx[left_path]]
+        right_embedding = embeddings[path_idx[right_path]]
+        right_median = medians[path_idx[right_path]]
+        left_comp = left_median * median_alpha + left_embedding * (1 - median_alpha)
+        right_comp = right_median * median_alpha + right_embedding * (1 - median_alpha)
+        return metric(left_comp, right_comp)
+
+    return compare
