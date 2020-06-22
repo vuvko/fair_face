@@ -110,8 +110,8 @@ def config_median_comparator(comparator, label_method, all_paths: List[Path], me
     labels = label_method(embeddings)
     medians = get_medians(embeddings, labels, norm_median)
 
-    embeddings = preprocessing.normalize(embeddings)
-    medians = preprocessing.normalize(medians)
+    # embeddings = preprocessing.normalize(embeddings)
+    # medians = preprocessing.normalize(medians)
 
     #     print('Done configurating')
 

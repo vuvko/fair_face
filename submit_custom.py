@@ -22,10 +22,10 @@ algorithm = cluster.AgglomerativeClustering(
         affinity='cosine',
         memory='/run/media/andrey/Data/cluster_cache/',
         linkage='complete',
-        distance_threshold=0.9291274601315189
+        distance_threshold=0.92
     )
 norm_median = False
-median_alpha = 0.5040577648719912
+median_alpha = 0.5
 cur_exp = 'ultimate5'
 model_path = Path('experiments') / cur_exp / 'snapshots'
 cur_epoch = len(list(model_path.iterdir())) - 1
@@ -38,5 +38,5 @@ metric = metrics.cosine
 cluster_comparator_co = config_median_comparator(comparator, partial(cluster_sklearn, algorithm=algorithm),
                                                  all_imgs, metric, norm_median, median_alpha)
 
-submit_name = 'ultimate5+cluster_cosine'
+submit_name = 'ultimate5+cluster_cosine_f'
 submit(data_path, val_csv, comparator, submit_name)
