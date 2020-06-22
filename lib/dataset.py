@@ -1,6 +1,9 @@
 import numpy as np
 import mxnet as mx
+from mxnet import io
+from mxnet import recordio
 import pandas as pd
+import numbers
 from pathlib import Path
 from more_itertools import unzip
 from mxnet.gluon.data.vision import transforms
@@ -46,11 +49,55 @@ class InfoDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tuple[MxImg, int]:
         img = load_img(self.data[idx][0])
-        if self.augs:
+        if self.augs is not None:
             img = self.augs(image=img)['image']
         img = img.transpose((2, 0, 1)).astype(np.float32)
         label = self.label_map[self.data[idx][1]]
         return mx.nd.array(img), label
+
+
+class ImgRecDataset(Dataset):
+
+    def __init__(self, rec_path: Path, augs=None):
+        self.rec_path = rec_path
+        path_imgidx = rec_path.with_suffix('.idx')
+        self.augs = augs
+        self.imgrec = recordio.MXIndexedRecordIO(str(path_imgidx), str(rec_path), 'r')
+        s = self.imgrec.read_idx(0)
+        header, _ = recordio.unpack(s)
+        if header.flag > 0:
+            self.header0 = (int(header.label[0]), int(header.label[1]))
+            self.imgidx = []
+            self.id2range = {}
+            self.seq_identity = range(int(header.label[0]), int(header.label[1]))
+            for identity in self.seq_identity:
+                s = self.imgrec.read_idx(identity)
+                header, _ = recordio.unpack(s)
+                a, b = int(header.label[0]), int(header.label[1])
+                self.id2range[identity] = (a, b)
+                self.imgidx += range(a, b)
+        else:
+            self.imgidx = list(self.imgrec.keys)
+        self.seq = self.imgidx
+        prop_path = rec_path.parent / 'property'
+        with open(str(prop_path), 'r') as f:
+            self.num_labels = int(f.readline().split(',')[0].strip())
+
+    def __len__(self):
+        return len(self.seq)
+
+    def __getitem__(self, idx):
+        idx = self.seq[idx]
+        s = self.imgrec.read_idx(idx)
+        header, img = recordio.unpack(s)
+        img = mx.image.imdecode(img)
+        if self.augs is not None:
+            img = mx.nd.array(self.augs(image=img.asnumpy())['image'])
+        img = img.transpose((2, 0, 1)).astype(np.float32)
+        label = header.label
+        if not isinstance(label, numbers.Number):
+            label = label[0]
+        return img, label
 
 
 class PairDataset(Dataset):

@@ -11,7 +11,7 @@ from tqdm import tqdm
 from more_itertools import unzip
 from sklearn.metrics import roc_curve, roc_auc_score
 from .basic_config import BasicConfig
-from .dataset import InfoDataset, PairDataset
+from .dataset import InfoDataset, PairDataset, ImgRecDataset
 from .sampler import UniformClassSampler
 from .utils import prepare_experiment, ensure_path
 from .data import aggregate_subjects, split_data, sample_pairs
@@ -35,7 +35,8 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     # val_idx, val_labels = unzip(val_pairs)
     # val_path_pairs = [(data_df['img_path'][left], data_df['img_path'][right]) for left, right in val_idx]
     train_df = data_df
-    dataset = InfoDataset(train_df, filter_fn=config.filter_fn, augs=config.train_augmentations)
+    # dataset = InfoDataset(train_df, filter_fn=config.filter_fn, augs=config.train_augmentations)
+    dataset = ImgRecDataset(config.extra_rec[0], augs=config.train_augmentations)
     train_data = DataLoader(
         dataset,
         batch_size=config.batch_size,

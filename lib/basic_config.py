@@ -47,3 +47,5 @@ class BasicConfig:
     normalize: bool = False
     weight_normalize: bool = False
     classifier_mult: float = 1.0
+
+    extra_rec: Sequence[Path] = ()

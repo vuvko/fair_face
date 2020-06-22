@@ -20,14 +20,14 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='full_ft3',
+        name='test_rec',
         num_workers=6,
         gpus=(0,),
-        batch_size=32,
-        num_epochs=10,
+        batch_size=24,
+        num_epochs=2,
         steps=(3, 6, np.inf),
         warmup_epoch=1,
-        cooldown_epoch=2,
+        cooldown_epoch=1,
         train_augmentations=alb.Compose([
             alb.Resize(128, 128),
             alb.OneOf([
@@ -56,10 +56,11 @@ def run_train(data_path: Path):
         ]),
         normalize=True,
         weight_normalize=True,
-        uniform_subjects=True,
+        uniform_subjects=False,
         classifier_mult=100,
         lr_factor=0.5,
-        initial_lr=1e-4
+        initial_lr=1e-4,
+        extra_rec=(Path('/run/media/andrey/Fast/FairFace/faces_emore/train.rec'),)
     )
     np.random.seed(cfg.seed)
     mx.random.seed(cfg.seed)
