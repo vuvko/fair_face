@@ -35,8 +35,8 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     # val_idx, val_labels = unzip(val_pairs)
     # val_path_pairs = [(data_df['img_path'][left], data_df['img_path'][right]) for left, right in val_idx]
     train_df = data_df
-    # dataset = InfoDataset(train_df, filter_fn=config.filter_fn, augs=config.train_augmentations)
-    dataset = ImgRecDataset(config.extra_rec[0], augs=config.train_augmentations)
+    dataset = InfoDataset(train_df, filter_fn=config.filter_fn, augs=config.train_augmentations)
+    # dataset = ImgRecDataset(config.extra_rec[0], augs=config.train_augmentations)
     train_data = DataLoader(
         dataset,
         batch_size=config.batch_size,
@@ -54,7 +54,7 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     #     num_workers=config.num_workers,
     #     pin_memory=use_gpu
     # )
-    model_name = 'arcface_r100_v1'
+    model_name = 'VGG2-ResNet50-Arcface'
     net_name = config.name
     weight_path = str(Path.home() / f'.insightface/models/{model_name}/model-0000.params')
     sym_path = str(Path.home() / f'.insightface/models/{model_name}/model-symbol.json')
@@ -86,7 +86,7 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     sym = mx.sym.FullyConnected(sym, weight=fc_weights, num_hidden=num_subjects, name='fc_classification', no_bias=False)
     net = gluon.SymbolBlock([sym], [mx.sym.var('data')])
     net.load_parameters(str(weight_path), ctx=mx.cpu(), cast_dtype=True,
-                        allow_missing=True, ignore_extra=False)
+                        allow_missing=True, ignore_extra=True)
     net.initialize(mx.init.Normal(), ctx=mx.cpu())
     net.collect_params().reset_ctx(ctx)
     net.hybridize()
@@ -156,6 +156,16 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
             trainer.step(config.batch_size, ignore_stale_grad=True)
             for idx, cur_loss in enumerate(cur_losses):
                 losses[idx] += sum([l.mean().asscalar() for l in cur_loss]) / len(cur_loss)
+
+            if (i + 1) % 1000 == 0:
+                # net.save_parameters(str(snapshots_path / f'{net_name}-{(epoch + 1):04d}.params'))
+                net.export(str(snapshots_path / f'{net_name}_{i + 1}'), epoch + 1)
+                i_losses = [sum([l.mean().asscalar() for l in cur_loss]) / len(cur_loss) for cur_loss in cur_losses]
+                losses_str = [f'{l_name}: {i_losses[idx]:.3f}' for idx, (l_name, _) in enumerate(all_losses)]
+                losses_str = '; '.join(losses_str)
+                m_name, m_val = metric.get()
+                losses_str += f'| {m_name}: {m_val}'
+                logger.info(f'[Epoch {epoch:03d}][{i+1}] {losses_str} | time: {time() - tic:.1f}')
 
         if (epoch + 1) % config.save_epoch == 0:
             # net.save_parameters(str(snapshots_path / f'{net_name}-{(epoch + 1):04d}.params'))

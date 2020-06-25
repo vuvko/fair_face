@@ -15,7 +15,7 @@ from typing import Sequence
 
 
 val_csv = Path('/run/media/andrey/Fast/FairFace/data/val/evaluation_pairs/predictions.csv')
-data_path = Path('/run/media/andrey/Fast/FairFace/data_prep2/val/data')
+data_path = Path('/run/media/andrey/Fast/FairFace/fixed_data/val/data')
 all_imgs = list(data_path.iterdir())
 algorithm = cluster.AgglomerativeClustering(
         n_clusters=None,
