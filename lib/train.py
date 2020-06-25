@@ -74,6 +74,7 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     if config.normalize:
         norm_sym = mx.sym.sqrt(mx.sym.sum(sym ** 2, axis=1, keepdims=True) + 1e-6)
         sym = mx.sym.broadcast_div(sym, norm_sym, name='fc_normed') * 32
+    embeddings = sym
     fc_weights = mx.sym.Variable('fc_weight',
                                  shape=(num_subjects, 512),
                                  init=mx.initializer.Xavier(rnd_type='gaussian',
@@ -84,21 +85,28 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
         fc_weights = mx.sym.L2Normalization(data=fc_weights,
                                             name='norm_fc_weight')
     sym = mx.sym.FullyConnected(sym, weight=fc_weights, num_hidden=num_subjects, name='fc_classification', no_bias=False)
+    sym = mx.sym.Group([embeddings, sym])
     net = gluon.SymbolBlock([sym], [mx.sym.var('data')])
     net.load_parameters(str(weight_path), ctx=mx.cpu(), cast_dtype=True,
                         allow_missing=True, ignore_extra=True)
     net.initialize(mx.init.Normal(), ctx=mx.cpu())
     net.collect_params().reset_ctx(ctx)
     net.hybridize()
+    softmax = gluon.loss.SoftmaxCrossEntropyLoss()
+    softmax.hybridize()
+    center = gluonfr.loss.CenterLoss(num_subjects, 512, 1e-1)
+    center.initialize(ctx=mx.cpu())
+    center.hybridize()
+    center.collect_params().reset_ctx(ctx)
 
     all_losses = [
-        ('softmax', gluon.loss.SoftmaxCrossEntropyLoss()),
+        ('softmax', lambda ots, gts: softmax(ots[1], gts)),
         # ('arc', gluonfr.loss.ArcLoss(num_families, m=0.7, s=32, easy_margin=False)),
-        # ('center', gluonfr.loss.CenterLoss(num_subjects, 512, 1e-1))
+        ('center', lambda ots, gts: center(ots[1], gts, ots[0]))
     ]
     # all_losses[1][1].initialize(mx.init.Normal(), ctx=mx.cpu())
     # all_losses[1][1].collect_params().reset_ctx(ctx)
-    [cur_loss[1].hybridize() for cur_loss in all_losses]
+    # [cur_loss[1].hybridize() for cur_loss in all_losses]
 
     if warmup > 0:
         start_lr = 1e-10
@@ -145,7 +153,7 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
                     print('OOps!')
                     raise RuntimeError
                 cur_losses = [[cur_loss(o, l) for (o, l) in zip(outputs, gts)] for _, cur_loss in all_losses]
-                metric.update(gts, outputs)
+                metric.update(gts, [ots[1] for ots in outputs])
                 combined_losses = [cur[0] for cur in zip(*cur_losses)]
                 if np.any([np.any(np.isnan(l.asnumpy())) for l in cur_losses[0]]):
                     print('OOps2!')

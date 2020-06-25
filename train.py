@@ -20,7 +20,7 @@ def config_parser() -> argparse.ArgumentParser:
 def run_train(data_path: Path):
     cfg = BasicConfig(
         seed=444,
-        name='test_fixed_vgg',
+        name='test_center_vgg',
         num_workers=4,
         gpus=(0,),
         batch_size=24,
