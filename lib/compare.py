@@ -7,7 +7,7 @@ from . import metrics
 from .dataset import ImgDataset
 
 from .mytypes import Embedding, Labels
-from typing import List
+from typing import List, Sequence, Optional
 
 
 class CompareModel(object):
@@ -102,7 +102,7 @@ def get_medians(embs, labels, norm_median: bool = False):
 def config_median_comparator(comparator, label_method, all_paths: List[Path], metric, norm_median: bool = False,
                              median_alpha: float = 1.0):
     #     print('Preparing embeddings')
-    res = [comparator(cur_p, cur_p) for cur_p in (all_paths)]
+    res = [comparator(cur_p, cur_p) for cur_p in all_paths]
     embeddings_dict = comparator.embeddings
     embeddings = np.array([embeddings_dict[cur_p] for cur_p in all_paths])
     path_idx = {path: idx for idx, path in enumerate(all_paths)}
@@ -125,3 +125,31 @@ def config_median_comparator(comparator, label_method, all_paths: List[Path], me
         return metric(left_comp, right_comp)
 
     return compare
+
+
+def config_rank_comparator(comparator, all_paths: List[Path], metric: str = 'cosine'):
+    res = [comparator(cur_p, cur_p) for cur_p in all_paths]
+    embeddings_dict = comparator.embeddings
+    embeddings = np.array([embeddings_dict[cur_p] for cur_p in all_paths])
+    path_idx = {path: idx for idx, path in enumerate(all_paths)}
+    if metric == 'cosine':
+        embeddings = embeddings / np.sqrt(np.sum(embeddings ** 2, axis=-1, keepdims=True))
+    all_ranks = np.empty((embeddings.shape[0], embeddings.shape[0]), dtype=np.float32)
+    cur_ranks = np.empty((embeddings.shape[0],), dtype=all_ranks.dtype)
+    for cur_idx, cur_emb in enumerate(embeddings):
+        dist = embeddings.dot(cur_emb)  # may be not normalized
+        cur_ranks[dist.argsort()] = np.arange(len(dist))
+        all_ranks[cur_idx, :] = cur_ranks / all_ranks.shape[0]
+
+    def compare(left_path: Path, right_path: Path):
+        return all_ranks[path_idx[left_path], path_idx[right_path]]
+
+    return compare
+
+
+def merge_ranks(predictions: Sequence[float], weights: Optional[np.ndarray] = None):
+    if weights is None:
+        return np.mean(predictions)
+    else:
+        weights = weights / np.sum(weights)
+        return np.sum(np.array(predictions, copy=False) * weights)

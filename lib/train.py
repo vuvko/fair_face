@@ -87,21 +87,22 @@ def train(config: BasicConfig, data_df: pd.DataFrame) -> None:
     sym = mx.sym.FullyConnected(sym, weight=fc_weights, num_hidden=num_subjects, name='fc_classification', no_bias=False)
     sym = mx.sym.Group([embeddings, sym])
     net = gluon.SymbolBlock([sym], [mx.sym.var('data')])
-    net.load_parameters(str(weight_path), ctx=mx.cpu(), cast_dtype=True,
-                        allow_missing=True, ignore_extra=True)
+    # net.load_parameters(str(weight_path), ctx=mx.cpu(), cast_dtype=True,
+    #                     allow_missing=True, ignore_extra=True)
     net.initialize(mx.init.Normal(), ctx=mx.cpu())
     net.collect_params().reset_ctx(ctx)
     net.hybridize()
     softmax = gluon.loss.SoftmaxCrossEntropyLoss()
     softmax.hybridize()
-    center = gluonfr.loss.CenterLoss(num_subjects, 512, 1e-1)
+    center = gluonfr.loss.CenterLoss(num_subjects, 512, 1e2)
     center.initialize(ctx=mx.cpu())
     center.hybridize()
     center.collect_params().reset_ctx(ctx)
+    arc = gluonfr.loss.ArcLoss(num_subjects, m=0.7, s=32, easy_margin=False)
 
     all_losses = [
-        ('softmax', lambda ots, gts: softmax(ots[1], gts)),
-        # ('arc', gluonfr.loss.ArcLoss(num_families, m=0.7, s=32, easy_margin=False)),
+        # ('softmax', lambda ots, gts: softmax(ots[1], gts)),
+        # ('arc', lambda ots, gts: arc(ots[1], gts)),
         ('center', lambda ots, gts: center(ots[1], gts, ots[0]))
     ]
     # all_losses[1][1].initialize(mx.init.Normal(), ctx=mx.cpu())

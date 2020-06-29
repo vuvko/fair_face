@@ -14,10 +14,12 @@ from typing import Sequence
 
 
 def report(data_path: Path, experiments: Sequence[str]):
-    val_csv = Path('data') / 'val_df.csv'
+    val_csv = Path('data') / 'train_df.csv'
     df = load_info(data_path, val_csv)
+    exists = [idx for idx, cur_path in enumerate(df['img_path']) if cur_path.exists()]
+    val_data = df.iloc[np.array(exists)]
     num_sample = 10 ** 6
-    subject_dict = aggregate_subjects(df['TEMPLATE_ID'], df['SUBJECT_ID'])
+    subject_dict = aggregate_subjects(val_data['TEMPLATE_ID'], val_data['SUBJECT_ID'])
     sampled_pairs, sampled_labels = unzip(sample_pairs(subject_dict, num_sample))
     sampled_labels = np.array(list(sampled_labels))
     sampled_pairs = list(sampled_pairs)
@@ -39,7 +41,7 @@ def report(data_path: Path, experiments: Sequence[str]):
     # norm_median = False
     # median_alpha = 0.5040577648719912
     # metric = metrics.euclidean
-    # cur_exp = 'ultimate5'
+    # cur_exp = 'test_center_vgg'
     # model_path = Path('experiments') / cur_exp / 'snapshots'
     # cur_epoch = len(list(model_path.iterdir())) - 1
     # comparator = CompareModel(str(model_path / cur_exp), cur_epoch, use_flip=True, ctx=mx.gpu(0))
@@ -66,7 +68,7 @@ def report(data_path: Path, experiments: Sequence[str]):
     print(f'Positive part: {positive_part}')
     print(f'Negative part: {negative_part}')
     # generating common errors
-    pos_thresh = 0.3
+    pos_thresh = 0.4
     neg_thresh = 0.0
     positives = results > pos_thresh
     negatives = results < neg_thresh
