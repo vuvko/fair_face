@@ -171,19 +171,18 @@ class PipeMatcher:
         self.detector = detector
         self.feature_extractors = feature_extractors
         self.k_closest = k_closest
+        self.path2idx = {p: i for i, p in enumerate(self.all_imgs)}
         self.path2idx = {}
         self.close_match = None
         self.calc_closest_match()
         self.features = {}
         self.prepare_features()
         self.final_ranks = None
-        self.path2idx = {cur_path: cur_idx for cur_idx, cur_path in enumerate(self.all_imgs)}
         self.ensemble_ranks()
 
     def calc_closest_match(self):
         viewed_pairs = np.zeros((len(self.all_imgs), len(self.all_imgs)), dtype=np.bool)
         connected = np.zeros((len(self.all_imgs), len(self.all_imgs)), dtype=np.bool)
-        self.path2idx = {p: i for i, p in enumerate(self.all_imgs)}
         print('Finding close images')
         to_view = list(enumerate(self.all_imgs))
         prog_bar = tqdm(total=len(to_view))
@@ -273,14 +272,21 @@ class PipeMatcher:
     def ensemble_ranks(self):
         all_features = np.array([self.features[k] for k in self.all_imgs]).transpose((1, 0, 2))
         num_imgs = len(self.all_imgs)
-        all_ranks = np.empty((all_features.shape[0], num_imgs, num_imgs), dtype=np.float32)
-        cur_ranks = np.empty((num_imgs,), dtype=all_ranks.dtype)
-        for cur_idx, cur_features in enumerate(all_features):
-            for inside_idx, cur_emb in enumerate(cur_features):
-                dist = cur_features.dot(cur_emb)  # may be not normalized
-                cur_ranks[dist.argsort()] = np.arange(num_imgs)
-                all_ranks[cur_idx, inside_idx, :] = cur_ranks / num_imgs
-        self.final_ranks = np.mean(all_ranks, axis=0)
+        if len(self.feature_extractors) > 1:
+            all_ranks = np.empty((all_features.shape[0], num_imgs, num_imgs), dtype=np.float32)
+            cur_ranks = np.empty((num_imgs,), dtype=all_ranks.dtype)
+            for cur_idx, cur_features in enumerate(all_features):
+                for inside_idx, cur_emb in enumerate(cur_features):
+                    dist = cur_features.dot(cur_emb)  # may be not normalized
+                    cur_ranks[dist.argsort()] = np.arange(num_imgs)
+                    all_ranks[cur_idx, inside_idx, :] = cur_ranks / num_imgs
+            self.final_ranks = np.mean(all_ranks, axis=0)
+        else:
+            all_features = all_features[0]
+            all_dist = np.empty((num_imgs, num_imgs), dtype=np.float32)
+            for cur_idx, cur_features in enumerate(all_features):
+                all_dist[cur_idx] = all_features.dot(cur_features)
+            self.final_ranks = all_dist
 
     def __call__(self, left_path: Path, right_path: Path) -> float:
         return self.final_ranks[self.path2idx[left_path], self.path2idx[right_path]]

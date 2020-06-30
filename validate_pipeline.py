@@ -11,6 +11,21 @@ import mxnet as mx
 from more_itertools import unzip
 
 
+def get_predicts(data_path, cache_dir, img_paths, pairs):
+    img_matcher = config_resnet_matcher(img_paths, cache_dir)
+    detector = pipeline_detector(img_paths, cache_dir / 'detector', small_face=16)
+    experiment_names = ['ultimate5', 'test_center_vgg']
+    epochs = [20, 10]
+    experiment_path = Path('experiments')
+    feature_extractors = [mxnet_feature_extractor(
+        cache_dir / f'extractor_{cur_exp}_{cur_epoch:04d}',
+        str(experiment_path / cur_exp / 'snapshots' / cur_exp),
+        cur_epoch, use_flip=True, ctx=mx.gpu(0))
+        for cur_exp, cur_epoch in zip(experiment_names, epochs)]
+    comparator = PipeMatcher(img_paths, cache_dir, img_matcher, detector, feature_extractors)
+    return np.array(list(unzip(compare_all(data_path, pairs, comparator))[2]))
+
+
 def validate_pipe():
     cache_dir = Path('/run/media/andrey/Data/pipe_cache')
     data_path = Path('/run/media/andrey/Fast/FairFace/data/train/data')
@@ -21,21 +36,8 @@ def validate_pipe():
     sampled_pairs, sampled_labels = unzip(sample_pairs(subject_dict, num_sample))
     sampled_labels = np.array(list(sampled_labels))
     sampled_pairs = list(sampled_pairs)
-    img_matcher = config_resnet_matcher(val_data['img_path'], cache_dir)
-    detector = pipeline_detector(val_data['img_path'], cache_dir / 'detector', small_face=16)
-    experiment_names = ['ultimate5', 'test_center_vgg']
-    epochs = [20, 10]
-    experiment_path = Path('experiments')
-    feature_extractors = [mxnet_feature_extractor(
-        cache_dir / f'extractor_{cur_exp}_{cur_epoch:04d}',
-        str(experiment_path / cur_exp / 'snapshots' / cur_exp),
-        cur_epoch, use_flip=True, ctx=mx.gpu(0))
-                          for cur_exp, cur_epoch in zip(experiment_names, epochs)]
-    comparator = PipeMatcher(val_data['img_path'], cache_dir, img_matcher, detector, feature_extractors)
-    predictions = np.array(list(unzip(compare_all(data_path, sampled_pairs, comparator))[2]))
-    comparator2 = PipeMatcher(val_data['img_path'], cache_dir, dummy_matcher, detector, feature_extractors)
-    predictions2 = np.array(list(unzip(compare_all(data_path, sampled_pairs, comparator2))[2]))
-    plot_roc([(sampled_labels, predictions), (sampled_labels, predictions2)], ['composite', 'dummy'],
+    predictions = get_predicts(data_path, cache_dir, val_data['img_path'], sampled_pairs)
+    plot_roc([(sampled_labels, predictions)], ['composite'],
              save_name='test_pipe.png')
 
 
