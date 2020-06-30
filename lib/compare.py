@@ -1,10 +1,13 @@
 import numpy as np
 import mxnet as mx
+import pandas as pd
 from pathlib import Path
 from insightface import model_zoo
 from sklearn import preprocessing
+import os
 from . import metrics
 from .dataset import ImgDataset
+from .utils import calc_closest_k, label_embeddings
 
 from .mytypes import Embedding, Labels
 from typing import List, Sequence, Optional
@@ -53,7 +56,7 @@ class CompareModel(object):
                 img = prep_img
             batch = mx.io.DataBatch([img])
             self.model.forward(batch, is_train=False)
-            self.embeddings[im_path] = self.model.get_outputs()[0].asnumpy().mean(axis=0)
+            self.embeddings[im_path] = self.model.get_outputs().asnumpy().mean(axis=0)
         return self.embeddings[im_path]
 
     def prepare_all_embeddings(self,
@@ -153,3 +156,84 @@ def merge_ranks(predictions: Sequence[float], weights: Optional[np.ndarray] = No
     else:
         weights = weights / np.sum(weights)
         return np.sum(np.array(predictions, copy=False) * weights)
+
+
+class PipeMatcher:
+
+    def __init__(self, img_dir: Path, cache_dir: Path, img_matcher, detector, feature_extractors):
+        self.img_dir = img_dir
+        self.cache_dir = cache_dir
+        if not cache_dir.exists():
+            os.makedirs(str(cache_dir))
+        self.all_imgs = list(img_dir.iterdir())
+        self.img_matcher = img_matcher
+        self.detector = detector
+        self.feature_extractors = feature_extractors
+        self.close_match = {}
+        self.calc_closest_match()
+        self.features = {}
+        self.prepare_features()
+        self.final_ranks = None
+        self.path2idx = {cur_path: cur_idx for cur_idx, cur_path in enumerate(self.all_imgs)}
+        self.ensemble_ranks()
+
+    def calc_closest_match(self):
+        if (self.cache_dir / 'labeling.csv').exists:
+            df = pd.read_csv(self.cache_dir / 'labeling.csv')
+            for img_path, close_match in zip(df['img_path'], df['close_match']):
+                self.close_match[img_path] = close_match
+        else:
+            for cur_idx, anchor_path in enumerate(self.all_imgs[:-1]):
+                self.close_match[anchor_path] = None
+                for inside_idx, comp_path in zip(range(cur_idx + 1, len(self.all_imgs)), self.all_imgs[cur_idx + 1:]):
+                    if self.img_matcher(anchor_path, comp_path):
+                        self.close_match[anchor_path] = comp_path
+                        break
+
+    @staticmethod
+    def collect_paths(cur_path: Path, close_match):
+        collected_paths = [cur_path]
+        while close_match[cur_path] is not None:
+            collected_paths.append(close_match[cur_path])
+            cur_path = close_match[cur_path]
+        return collected_paths
+
+    def aggregate_features(self):
+        to_aggregate = set(self.all_imgs)
+        while len(to_aggregate) > 0:
+            cur_path = to_aggregate.pop()
+            collected_paths = self.collect_paths(cur_path, self.close_match)
+            to_aggregate = to_aggregate - set(collected_paths)
+            cur_features = [self.features[k] for k in collected_paths]
+            aggregated = []
+            for cur_idx in range(len(self.feature_extractors)):
+                cur_aggregated = np.mean([cur_embs[cur_idx] for cur_embs in cur_features])
+                aggregated.append(cur_aggregated / np.sqrt(np.sum(cur_aggregated ** 2, axis=-1, keepdims=True)))
+            for cur_ins in collected_paths:
+                self.features[cur_ins] = aggregated
+
+    def prepare_features(self):
+        for cur_path in self.all_imgs:
+            prep_img = self.detector(cur_path)
+            cur_features = []
+            for cur_idx, cur_extractor in enumerate(self.feature_extractors):
+                cur_features.append(cur_extractor(prep_img))
+            self.features[cur_path] = np.array(cur_features)
+        self.aggregate_features()
+
+    def ensemble_ranks(self):
+        all_features = np.array([self.features[k] for k in self.all_imgs]).transpose((1, 0, 2))
+        num_imgs = len(self.all_imgs)
+        all_ranks = np.empty((all_features.shape[0], num_imgs, num_imgs), dtype=np.float32)
+        cur_ranks = np.empty((num_imgs,), dtype=all_ranks.dtype)
+        for cur_idx, cur_features in enumerate(all_features):
+            for inside_idx, cur_emb in cur_features:
+                dist = cur_features.dot(cur_emb)  # may be not normalized
+                cur_ranks[dist.argsort()] = np.arange(num_imgs)
+                all_ranks[cur_idx, inside_idx, :] = cur_ranks / num_imgs
+        self.final_ranks = np.mean(all_ranks, axis=0)
+
+    def __call__(self, left_path: Path, right_path: Path) -> float:
+        return self.final_ranks[self.path2idx[left_path], self.path2idx[right_path]]
+
+

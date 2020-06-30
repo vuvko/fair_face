@@ -1,4 +1,5 @@
 import numpy as np
+import mxnet as mx
 from insightface.utils.face_align import norm_crop
 from pathlib import Path
 import shutil
@@ -96,3 +97,44 @@ def prepare_experiment(config: BasicConfig) -> Optional[Tuple[Path, logging.Logg
     logger.addHandler(fh)
     logger.setLevel(logging.DEBUG)
     return experiment_path, logger
+
+
+def calc_closest_k(embs, k: int = 2, batch_size: int = 10 ** 2, use_gpu: bool = True):
+    closest_vals = np.empty((embs.shape[0], k), dtype=np.float32)
+    closest_idx = np.empty((embs.shape[0], k), dtype=np.int32)
+    if use_gpu:
+        ctx = mx.gpu(0)
+    else:
+        ctx = mx.cpu()
+    mx_embeddings = mx.nd.array(embs.astype(np.float32), ctx=ctx)
+    mx_embeddings = mx_embeddings / mx.nd.sqrt(mx.nd.sum(mx_embeddings ** 2, axis=-1, keepdims=True))
+    for bg in tqdm(range(0, embs.shape[0], batch_size)):
+        ed = min(embs.shape[0], bg + batch_size)
+        cur_embs = mx_embeddings[bg:ed]
+        cur_dist = 1 - mx.nd.dot(cur_embs, mx_embeddings.T)
+        cur_vals, cur_idx = mx.nd.topk(cur_dist, k=k, axis=-1, ret_typ='both', dtype='int32', is_ascend=True)
+        closest_vals[bg:ed] = cur_vals.asnumpy()
+        closest_idx[bg:ed] = cur_idx.asnumpy()
+    return closest_vals, closest_idx
+
+
+def label_embeddings(closest_vals, closest_idx, threshold: float = 0.3):
+    NO_LABEL = -1
+    labels = np.zeros((closest_vals.shape[0],), dtype=np.int32) + NO_LABEL
+    cur_label = 0
+    # closest_vals, closest_idx = calc_closest_k(embs, k=k, use_gpu=use_gpu)
+    for cur_idx, (cur_dists, cur_closest) in tqdm(enumerate(zip(closest_vals, closest_idx))):
+        if labels[cur_idx] != NO_LABEL:
+            continue
+        to_label = cur_closest[cur_dists < threshold]
+        if np.all(labels[to_label]) != NO_LABEL:
+            search_labels = np.unique(labels[to_label])
+            more_to_label = [to_label]
+            for cur_l in search_labels:
+                if cur_l == NO_LABEL:
+                    continue
+                more_to_label.append(np.where(labels == cur_l)[0])
+            to_label = np.concatenate(more_to_label, axis=0)
+        labels[to_label] = cur_label
+        cur_label += 1
+    return labels
