@@ -2,9 +2,11 @@ import numpy as np
 import mxnet as mx
 import pandas as pd
 from pathlib import Path
+from tqdm import tqdm
 from insightface import model_zoo
 from sklearn import preprocessing
 import os
+from queue import Queue
 from . import metrics
 from .dataset import ImgDataset
 from .utils import calc_closest_k, label_embeddings
@@ -56,7 +58,7 @@ class CompareModel(object):
                 img = prep_img
             batch = mx.io.DataBatch([img])
             self.model.forward(batch, is_train=False)
-            self.embeddings[im_path] = self.model.get_outputs().asnumpy().mean(axis=0)
+            self.embeddings[im_path] = self.model.get_outputs()[0].asnumpy().mean(axis=0)
         return self.embeddings[im_path]
 
     def prepare_all_embeddings(self,
@@ -160,16 +162,17 @@ def merge_ranks(predictions: Sequence[float], weights: Optional[np.ndarray] = No
 
 class PipeMatcher:
 
-    def __init__(self, img_dir: Path, cache_dir: Path, img_matcher, detector, feature_extractors):
-        self.img_dir = img_dir
+    def __init__(self, all_imgs, cache_dir: Path, img_matcher, detector, feature_extractors, k_closest: int = 3):
         self.cache_dir = cache_dir
         if not cache_dir.exists():
             os.makedirs(str(cache_dir))
-        self.all_imgs = list(img_dir.iterdir())
+        self.all_imgs = all_imgs
         self.img_matcher = img_matcher
         self.detector = detector
         self.feature_extractors = feature_extractors
-        self.close_match = {}
+        self.k_closest = k_closest
+        self.path2idx = {}
+        self.close_match = None
         self.calc_closest_match()
         self.features = {}
         self.prepare_features()
@@ -178,36 +181,82 @@ class PipeMatcher:
         self.ensemble_ranks()
 
     def calc_closest_match(self):
-        if (self.cache_dir / 'labeling.csv').exists:
-            df = pd.read_csv(self.cache_dir / 'labeling.csv')
-            for img_path, close_match in zip(df['img_path'], df['close_match']):
-                self.close_match[img_path] = close_match
-        else:
-            for cur_idx, anchor_path in enumerate(self.all_imgs[:-1]):
-                self.close_match[anchor_path] = None
-                for inside_idx, comp_path in zip(range(cur_idx + 1, len(self.all_imgs)), self.all_imgs[cur_idx + 1:]):
-                    if self.img_matcher(anchor_path, comp_path):
-                        self.close_match[anchor_path] = comp_path
-                        break
+        viewed_pairs = np.zeros((len(self.all_imgs), len(self.all_imgs)), dtype=np.bool)
+        connected = np.zeros((len(self.all_imgs), len(self.all_imgs)), dtype=np.bool)
+        self.path2idx = {p: i for i, p in enumerate(self.all_imgs)}
+        print('Finding close images')
+        to_view = list(enumerate(self.all_imgs))
+        prog_bar = tqdm(total=len(to_view))
+        while len(to_view) > 0:
+            outer_idx, outer_path = to_view[0]
+            for inside_idx, inside_path in to_view[1:]:
+                if viewed_pairs[outer_idx, inside_idx]:
+                    continue
+                viewed_pairs[outer_idx, inside_idx] = 1
+                viewed_pairs[inside_idx, outer_idx] = 1
+                if self.img_matcher(outer_path, inside_path):
+                    connected[outer_idx, inside_idx] = 1
+                    connected[inside_idx, outer_idx] = 1
+                    break
+            to_view = to_view[1:]
+            prog_bar.update(1)
+        self.close_match = connected
 
-    @staticmethod
-    def collect_paths(cur_path: Path, close_match):
-        collected_paths = [cur_path]
-        while close_match[cur_path] is not None:
-            collected_paths.append(close_match[cur_path])
-            cur_path = close_match[cur_path]
-        return collected_paths
+        # if (self.cache_dir / 'labeling.csv').exists():
+        #     df = pd.read_csv(self.cache_dir / 'labeling.csv')
+        #     for img_path, close_match in zip(df['img_path'], df['close_match']):
+        #         self.close_match[img_path] = close_match
+        # else:
+        #     with open(str(self.cache_dir / 'labeling.csv'), 'w') as f:
+        #         print('img_path,close_match', file=f)
+        # print('Finding close images')
+        # for cur_idx, anchor_path in enumerate(tqdm(self.all_imgs[:-1])):
+        #     if self.close_match.get(anchor_path, None) is not None:
+        #         continue
+        #     self.close_match[anchor_path] = None
+        #     for inside_idx, comp_path in zip(range(cur_idx + 1, len(self.all_imgs)), self.all_imgs[cur_idx + 1:]):
+        #         if self.img_matcher(anchor_path, comp_path):
+        #             self.close_match[anchor_path] = comp_path
+        #             self.close_match[comp_path] = anchor_path
+        #             with open(str(self.cache_dir / 'labeling.csv'), 'a') as f:
+        #                 print(f'{anchor_path},{comp_path}', file=f)
+        #                 print(f'{comp_path},{anchor_path}', file=f)
+        #             break
+
+    def collect_paths(self, cur_path: Path):
+        # collected_paths = {cur_path}
+        # view_queue = Queue()
+        # view_queue.put(cur_path)
+        # while not view_queue.empty():
+        #     cur_path = view_queue.get()
+        #     collected_paths.update(set(close_match[cur_path]))
+        #     cur_path = close_match[cur_path]
+        # return collected_paths
+        # collected_idx = np.nonzero(self.close_match[self.path2idx[cur_path]])[0]
+        view_queue = Queue()
+        first_idx = self.path2idx[cur_path]
+        collected_idx = set()
+        view_queue.put(first_idx)
+        while not view_queue.empty():
+            cur_idx = view_queue.get()
+            if cur_idx in collected_idx:
+                continue
+            collected_idx.add(cur_idx)
+            next_idx = np.nonzero(self.close_match[cur_idx])[0]
+            if len(next_idx) > 0:
+                [view_queue.put(i) for i in next_idx]
+        return [self.all_imgs[i] for i in collected_idx]
 
     def aggregate_features(self):
         to_aggregate = set(self.all_imgs)
         while len(to_aggregate) > 0:
             cur_path = to_aggregate.pop()
-            collected_paths = self.collect_paths(cur_path, self.close_match)
+            collected_paths = self.collect_paths(cur_path)
             to_aggregate = to_aggregate - set(collected_paths)
             cur_features = [self.features[k] for k in collected_paths]
             aggregated = []
             for cur_idx in range(len(self.feature_extractors)):
-                cur_aggregated = np.mean([cur_embs[cur_idx] for cur_embs in cur_features])
+                cur_aggregated = np.mean([cur_embs[cur_idx] for cur_embs in cur_features], axis=0)
                 aggregated.append(cur_aggregated / np.sqrt(np.sum(cur_aggregated ** 2, axis=-1, keepdims=True)))
             for cur_ins in collected_paths:
                 self.features[cur_ins] = aggregated
@@ -217,7 +266,7 @@ class PipeMatcher:
             prep_img = self.detector(cur_path)
             cur_features = []
             for cur_idx, cur_extractor in enumerate(self.feature_extractors):
-                cur_features.append(cur_extractor(prep_img))
+                cur_features.append(cur_extractor(prep_img, cur_path))
             self.features[cur_path] = np.array(cur_features)
         self.aggregate_features()
 
@@ -227,7 +276,7 @@ class PipeMatcher:
         all_ranks = np.empty((all_features.shape[0], num_imgs, num_imgs), dtype=np.float32)
         cur_ranks = np.empty((num_imgs,), dtype=all_ranks.dtype)
         for cur_idx, cur_features in enumerate(all_features):
-            for inside_idx, cur_emb in cur_features:
+            for inside_idx, cur_emb in enumerate(cur_features):
                 dist = cur_features.dot(cur_emb)  # may be not normalized
                 cur_ranks[dist.argsort()] = np.arange(num_imgs)
                 all_ranks[cur_idx, inside_idx, :] = cur_ranks / num_imgs
