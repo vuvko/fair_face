@@ -172,7 +172,6 @@ class PipeMatcher:
         self.feature_extractors = feature_extractors
         self.k_closest = k_closest
         self.path2idx = {p: i for i, p in enumerate(self.all_imgs)}
-        self.path2idx = {}
         self.close_match = None
         self.calc_closest_match()
         self.features = {}

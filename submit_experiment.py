@@ -23,9 +23,9 @@ def config_parser() -> argparse.ArgumentParser:
 
 def compare(data_path: Path, csv_path: Path, experiment: str, epoch: int) -> None:
     model_path = Path('experiments') / experiment / 'snapshots'
-    comparator = CompareModel(str(model_path / experiment), epoch, ctx=mx.gpu(0))
+    comparator = CompareModel(str(model_path / experiment), epoch, ctx=mx.gpu(0), use_flip=True)
     comparator.metric = cosine
-    submit(data_path, csv_path, comparator, f'{experiment}_{epoch}')
+    submit(data_path, csv_path, comparator, f'final_{experiment}_{epoch}_flip')
 
 
 if __name__ == '__main__':

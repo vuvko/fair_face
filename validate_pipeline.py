@@ -3,7 +3,7 @@ from lib.data import load_info, aggregate_subjects, sample_pairs
 from lib.pipeline import mxnet_feature_extractor, pipeline_detector
 from lib.matching import config_resnet_matcher, dummy_matcher
 from lib.validate import plot_roc
-from lib.submit import compare_all
+from lib.submit import compare_all, submit
 import pandas as pd
 from pathlib import Path
 import numpy as np
@@ -41,5 +41,25 @@ def validate_pipe():
              save_name='test_pipe.png')
 
 
+def submit_pipe():
+    data_path = Path('/run/media/andrey/Fast/FairFace/test/data')
+    csv_path = Path('/run/media/andrey/Fast/FairFace/test/evaluation_pairs/predictions.csv')
+    img_paths = list(data_path.iterdir())
+    cache_dir = Path('/run/media/andrey/Data/pipe_cache_test')
+    img_matcher = config_resnet_matcher(img_paths, cache_dir)
+    detector = pipeline_detector(img_paths, cache_dir / 'detector', small_face=16)
+    experiment_names = ['ultimate5', 'test_center_vgg']
+    epochs = [20, 10]
+    experiment_path = Path('experiments')
+    feature_extractors = [mxnet_feature_extractor(
+        cache_dir / f'extractor_{cur_exp}_{cur_epoch:04d}',
+        str(experiment_path / cur_exp / 'snapshots' / cur_exp),
+        cur_epoch, use_flip=True, ctx=mx.gpu(0))
+        for cur_exp, cur_epoch in zip(experiment_names, epochs)]
+    comparator = PipeMatcher(img_paths, cache_dir, img_matcher, detector, feature_extractors)
+    submit(data_path, csv_path, comparator, f'pipe_ultimate5_center_vgg')
+
+
 if __name__ == '__main__':
-    validate_pipe()
+    # validate_pipe()
+    submit_pipe()
