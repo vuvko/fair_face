@@ -274,7 +274,8 @@ class PipeMatcher:
         if len(self.feature_extractors) > 1:
             all_ranks = np.empty((all_features.shape[0], num_imgs, num_imgs), dtype=np.float32)
             cur_ranks = np.empty((num_imgs,), dtype=all_ranks.dtype)
-            for cur_idx, cur_features in enumerate(all_features):
+            print('Ensembling')
+            for cur_idx, cur_features in tqdm(enumerate(all_features)):
                 for inside_idx, cur_emb in enumerate(cur_features):
                     dist = cur_features.dot(cur_emb)  # may be not normalized
                     cur_ranks[dist.argsort()] = np.arange(num_imgs)
@@ -283,7 +284,8 @@ class PipeMatcher:
         else:
             all_features = all_features[0]
             all_dist = np.empty((num_imgs, num_imgs), dtype=np.float32)
-            for cur_idx, cur_features in enumerate(all_features):
+            print('Distance calculating')
+            for cur_idx, cur_features in tqdm(enumerate(all_features)):
                 all_dist[cur_idx] = all_features.dot(cur_features)
             self.final_ranks = all_dist
 

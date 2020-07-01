@@ -31,6 +31,19 @@ def collect_matches(superglue_path: Path, cache_dir: Path,
     return results
 
 
+def superglue_matcher(superglue_cache: Path, conf_thresh: float = 0.512, min_matched: int = 52):
+
+    def match(left: Path, right: Path) -> bool:
+        path = superglue_cache / f'{left.stem}_{right.stem}_matches.npz'
+        if not path.exists():
+            return False
+        f = np.load(str(path))
+        conf = f['match_confidence']
+        return np.sum(conf > conf_thresh) > min_matched
+
+    return match
+
+
 def dummy_matcher(left: Path, right: Path) -> bool:
     return False
 
