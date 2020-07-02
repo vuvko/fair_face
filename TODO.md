@@ -9,7 +9,7 @@
 * Add instructions for training on Google Colab or Kaggle.
 * Ensemble
   * add linear model on top of predictions
-  ~~* aggregation~~
+  * ~~aggregation~~
 
 ### Validation
 
